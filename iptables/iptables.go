@@ -256,6 +256,23 @@ func (ipt *IPTables) ListChains(table string) ([]string, error) {
 	return chains, nil
 }
 
+func (ipt *IPTables) RuleInSpecifiedChainExists(table, chain, index, filterStr string) (bool, error) {
+	var out =bytes.Buffer{}
+	err := ipt.runWithOutput([]string{"-t", table, "-S", chain, index},&out)
+	eerr, eok := err.(*Error)
+	switch {
+	case err == nil:
+		if strings.Contains(out.String(),filterStr){
+			return true, nil
+		}
+		return false,nil
+	case eok && eerr.ExitStatus() == 1:
+		return false, nil
+	default:
+		return false, err
+	}
+}
+
 // '-S' is fine with non existing rule index as long as the chain exists
 // therefore pass index 1 to reduce overhead for large chains
 func (ipt *IPTables) ChainExists(table, chain string) (bool, error) {
