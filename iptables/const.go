@@ -3,18 +3,18 @@ package iptables
 type Table string
 
 const (
-	RAW    Table = "raw"
-	NAT    Table = "nat"
-	Filter Table = "filter"
-	Mangle Table = "mangle"
+	RawTABLE    Table = "raw"
+	NatTable    Table = "nat"
+	FilterTable Table = "filter"
+	MangleTable Table = "mangle"
 )
 
 type Chain string
 
 const (
-	PostRouting Chain = "POSTROUTING"
-	PreRouting  Chain = "PREROUTING"
-	Output      Chain = "OUTPUT"
-	Input       Chain = "INPUT"
-	Forward     Chain = "FORWARD"
+	PostRoutingChain Chain = "POSTROUTING"
+	PreRoutingChain  Chain = "PREROUTING"
+	OutputChain      Chain = "OUTPUT"
+	InputChain       Chain = "INPUT"
+	ForwardChain     Chain = "FORWARD"
 )
