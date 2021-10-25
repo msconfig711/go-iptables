@@ -161,12 +161,12 @@ func (ipt *IPTables) Proto() Protocol {
 }
 
 // Exists checks if given rulespec in specified table/chain exists
-func (ipt *IPTables) Exists(table, chain string, rulespec ...string) (bool, error) {
+func (ipt *IPTables) Exists(table Table, chain Chain, rulespec ...string) (bool, error) {
 	if !ipt.hasCheck {
 		return ipt.existsForOldIptables(table, chain, rulespec)
 
 	}
-	cmd := append([]string{"-t", table, "-C", chain}, rulespec...)
+	cmd := append([]string{"-t", string(table), "-C", string(chain)}, rulespec...)
 	err := ipt.run(cmd...)
 	eerr, eok := err.(*Error)
 	switch {
@@ -180,19 +180,19 @@ func (ipt *IPTables) Exists(table, chain string, rulespec ...string) (bool, erro
 }
 
 // Insert inserts rulespec to specified table/chain (in specified pos)
-func (ipt *IPTables) Insert(table, chain string, pos int, rulespec ...string) error {
-	cmd := append([]string{"-t", table, "-I", chain, strconv.Itoa(pos)}, rulespec...)
+func (ipt *IPTables) Insert(table Table, chain Chain, pos int, rulespec ...string) error {
+	cmd := append([]string{"-t", string(table), "-I", string(chain), strconv.Itoa(pos)}, rulespec...)
 	return ipt.run(cmd...)
 }
 
 // Append appends rulespec to specified table/chain
-func (ipt *IPTables) Append(table, chain string, rulespec ...string) error {
-	cmd := append([]string{"-t", table, "-A", chain}, rulespec...)
+func (ipt *IPTables) Append(table Table, chain Chain, rulespec ...string) error {
+	cmd := append([]string{"-t", string(table), "-A", string(chain)}, rulespec...)
 	return ipt.run(cmd...)
 }
 
 // AppendUnique acts like Append except that it won't add a duplicate
-func (ipt *IPTables) AppendUnique(table, chain string, rulespec ...string) error {
+func (ipt *IPTables) AppendUnique(table Table, chain Chain, rulespec ...string) error {
 	exists, err := ipt.Exists(table, chain, rulespec...)
 	if err != nil {
 		return err
@@ -206,12 +206,12 @@ func (ipt *IPTables) AppendUnique(table, chain string, rulespec ...string) error
 }
 
 // Delete removes rulespec in specified table/chain
-func (ipt *IPTables) Delete(table, chain string, rulespec ...string) error {
-	cmd := append([]string{"-t", table, "-D", chain}, rulespec...)
+func (ipt *IPTables) Delete(table Table, chain Chain, rulespec ...string) error {
+	cmd := append([]string{"-t", string(table), "-D", string(chain)}, rulespec...)
 	return ipt.run(cmd...)
 }
 
-func (ipt *IPTables) DeleteIfExists(table, chain string, rulespec ...string) error {
+func (ipt *IPTables) DeleteIfExists(table Table, chain Chain, rulespec ...string) error {
 	exists, err := ipt.Exists(table, chain, rulespec...)
 	if err == nil && exists {
 		err = ipt.Delete(table, chain, rulespec...)
@@ -220,20 +220,20 @@ func (ipt *IPTables) DeleteIfExists(table, chain string, rulespec ...string) err
 }
 
 // List rules in specified table/chain
-func (ipt *IPTables) List(table, chain string) ([]string, error) {
-	args := []string{"-t", table, "-S", chain}
+func (ipt *IPTables) List(table Table, chain Chain) ([]string, error) {
+	args := []string{"-t", string(table), "-S", string(chain)}
 	return ipt.executeList(args)
 }
 
 // List rules (with counters) in specified table/chain
-func (ipt *IPTables) ListWithCounters(table, chain string) ([]string, error) {
-	args := []string{"-t", table, "-v", "-S", chain}
+func (ipt *IPTables) ListWithCounters(table Table, chain Chain) ([]string, error) {
+	args := []string{"-t", string(table), "-v", "-S", string(chain)}
 	return ipt.executeList(args)
 }
 
 // ListChains returns a slice containing the name of each chain in the specified table.
-func (ipt *IPTables) ListChains(table string) ([]string, error) {
-	args := []string{"-t", table, "-S"}
+func (ipt *IPTables) ListChains(table Table) ([]string, error) {
+	args := []string{"-t", string(table), "-S"}
 
 	result, err := ipt.executeList(args)
 	if err != nil {
@@ -256,16 +256,16 @@ func (ipt *IPTables) ListChains(table string) ([]string, error) {
 	return chains, nil
 }
 
-func (ipt *IPTables) RuleInSpecifiedChainExists(table, chain, index, filterStr string) (bool, error) {
-	var out =bytes.Buffer{}
-	err := ipt.runWithOutput([]string{"-t", table, "-S", chain, index},&out)
+func (ipt *IPTables) RuleInSpecifiedChainExists(table Table, chain Chain, index, filterStr string) (bool, error) {
+	var out = bytes.Buffer{}
+	err := ipt.runWithOutput([]string{"-t", string(table), "-S", string(chain), index}, &out)
 	eerr, eok := err.(*Error)
 	switch {
 	case err == nil:
-		if strings.Contains(out.String(),filterStr){
+		if strings.Contains(out.String(), filterStr) {
 			return true, nil
 		}
-		return false,nil
+		return false, nil
 	case eok && eerr.ExitStatus() == 1:
 		return false, nil
 	default:
@@ -275,8 +275,8 @@ func (ipt *IPTables) RuleInSpecifiedChainExists(table, chain, index, filterStr s
 
 // '-S' is fine with non existing rule index as long as the chain exists
 // therefore pass index 1 to reduce overhead for large chains
-func (ipt *IPTables) ChainExists(table, chain string) (bool, error) {
-	err := ipt.run("-t", table, "-S", chain, "1")
+func (ipt *IPTables) ChainExists(table Table, chain Chain) (bool, error) {
+	err := ipt.run("-t", string(table), "-S", string(chain), "1")
 	eerr, eok := err.(*Error)
 	switch {
 	case err == nil:
@@ -289,8 +289,8 @@ func (ipt *IPTables) ChainExists(table, chain string) (bool, error) {
 }
 
 // Stats lists rules including the byte and packet counts
-func (ipt *IPTables) Stats(table, chain string) ([][]string, error) {
-	args := []string{"-t", table, "-L", chain, "-n", "-v", "-x"}
+func (ipt *IPTables) Stats(table Table, chain Chain) ([][]string, error) {
+	args := []string{"-t", string(table), "-L", string(chain), "-n", "-v", "-x"}
 	lines, err := ipt.executeList(args)
 	if err != nil {
 		return nil, err
@@ -393,7 +393,7 @@ func (ipt *IPTables) ParseStat(stat []string) (parsed Stat, err error) {
 
 // StructuredStats returns statistics as structured data which may be further
 // parsed and marshaled.
-func (ipt *IPTables) StructuredStats(table, chain string) ([]Stat, error) {
+func (ipt *IPTables) StructuredStats(table Table, chain Chain) ([]Stat, error) {
 	rawStats, err := ipt.Stats(table, chain)
 	if err != nil {
 		return nil, err
@@ -433,15 +433,15 @@ func (ipt *IPTables) executeList(args []string) ([]string, error) {
 
 // NewChain creates a new chain in the specified table.
 // If the chain already exists, it will result in an error.
-func (ipt *IPTables) NewChain(table, chain string) error {
-	return ipt.run("-t", table, "-N", chain)
+func (ipt *IPTables) NewChain(table Table, chain Chain) error {
+	return ipt.run("-t", string(table), "-N", string(chain))
 }
 
 const existsErr = 1
 
 // ClearChain flushed (deletes all rules) in the specified table/chain.
 // If the chain does not exist, a new one will be created
-func (ipt *IPTables) ClearChain(table, chain string) error {
+func (ipt *IPTables) ClearChain(table Table, chain Chain) error {
 	err := ipt.NewChain(table, chain)
 
 	eerr, eok := err.(*Error)
@@ -450,15 +450,15 @@ func (ipt *IPTables) ClearChain(table, chain string) error {
 		return nil
 	case eok && eerr.ExitStatus() == existsErr:
 		// chain already exists. Flush (clear) it.
-		return ipt.run("-t", table, "-F", chain)
+		return ipt.run("-t", string(table), "-F", string(chain))
 	default:
 		return err
 	}
 }
 
 // RenameChain renames the old chain to the new one.
-func (ipt *IPTables) RenameChain(table, oldChain, newChain string) error {
-	return ipt.run("-t", table, "-E", oldChain, newChain)
+func (ipt *IPTables) RenameChain(table Table, oldChain, newChain Chain) error {
+	return ipt.run("-t", string(table), "-E", string(oldChain), string(newChain))
 }
 
 // DeleteChain deletes the chain in the specified table.
@@ -467,14 +467,14 @@ func (ipt *IPTables) DeleteChain(table, chain string) error {
 	return ipt.run("-t", table, "-X", chain)
 }
 
-func (ipt *IPTables) ClearAndDeleteChain(table, chain string) error {
+func (ipt *IPTables) ClearAndDeleteChain(table Table, chain Chain) error {
 	exists, err := ipt.ChainExists(table, chain)
 	if err != nil || !exists {
 		return err
 	}
-	err = ipt.run("-t", table, "-F", chain)
+	err = ipt.run("-t", string(table), "-F", string(chain))
 	if err == nil {
-		err = ipt.run("-t", table, "-X", chain)
+		err = ipt.run("-t", string(table), "-X", string(chain))
 	}
 	return err
 }
@@ -488,8 +488,8 @@ func (ipt *IPTables) DeleteAll() error {
 }
 
 // ChangePolicy changes policy on chain to target
-func (ipt *IPTables) ChangePolicy(table, chain, target string) error {
-	return ipt.run("-t", table, "-P", chain, target)
+func (ipt *IPTables) ChangePolicy(table Table, chain Chain, target string) error {
+	return ipt.run("-t", string(table), "-P", string(chain), target)
 }
 
 // Check if the underlying iptables command supports the --random-fully flag
@@ -662,9 +662,9 @@ func iptablesHasRandomFully(v1 int, v2 int, v3 int) bool {
 }
 
 // Checks if a rule specification exists for a table
-func (ipt *IPTables) existsForOldIptables(table, chain string, rulespec []string) (bool, error) {
-	rs := strings.Join(append([]string{"-A", chain}, rulespec...), " ")
-	args := []string{"-t", table, "-S"}
+func (ipt *IPTables) existsForOldIptables(table Table, chain Chain, rulespec []string) (bool, error) {
+	rs := strings.Join(append([]string{"-A", string(chain)}, rulespec...), " ")
+	args := []string{"-t", string(table), "-S"}
 	var stdout bytes.Buffer
 	err := ipt.runWithOutput(args, &stdout)
 	if err != nil {
